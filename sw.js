@@ -19,6 +19,7 @@ function cleanCache(cacheName, sizeItems) {
 }
 
 self.addEventListener('install', e => {
+    // 20213-PWA-U2-P5
    const promesaCache = caches.open(CACHE_STATIC_NAME)
     .then(cache => {
         return cache.addAll([
@@ -27,6 +28,7 @@ self.addEventListener('install', e => {
             '/css/page.css',
             '/img/mx-tl.jpg',
             '/js/app.js',
+            '/pages/view-offline.html'
         ]
         );
     });
@@ -40,6 +42,17 @@ self.addEventListener('install', e => {
 
 
     e.waitUntil(Promise.all([promesaCache, promInmutable]));
+});
+
+self.addEventListener('activate', (event) => {
+    const resDelCache = caches.keys().then(keys => {
+        keys.forEach(key => {
+            if (key !== CACHE_STATIC_NAME && key.includes('static')) {
+                return caches.delete(key);
+            }
+        });
+    });
+    event.waitUntil(resDelCache);
 });
 
 self.addEventListener('fetch', (event) => {
@@ -61,6 +74,15 @@ self.addEventListener('fetch', (event) => {
                 });
             });
             return respNet.clone();
+        })
+        .catch((err)=>{
+            console.log('Error al solicitar el recurso');
+            if (event.request.headers.get('accept').includes('text/html')) {
+                return caches.match('/pages/view-offline.html');
+            }
+            if(event.request.url.includes('.jpg') || event.request.url.includes('.png') || event.request.url.includes('.jpeg')){
+                return caches.match('/img/broken.png')
+            }
         });
     });
 
@@ -68,4 +90,24 @@ self.addEventListener('fetch', (event) => {
 
     //1.- Only cache
     // event.respondWith(caches.match(event.request));
+
+    // 3.- Network with cache fallback
+    // const respuesta = fetch(event.request).then(res => {
+
+    //     if (!res) {
+    //         return caches.match(event.request);
+    //     }
+        
+    //     caches.open(CACHE_DYNAMIC_NAME)
+    //     .then(cache => {
+    //         cache.put(event.request, res);
+    //         cleanCache(CACHE_DYNAMIC_NAME, 5);
+    //     });
+    //     return res.clone();
+    // }).catch(error => {
+    //     return caches.match(event.request);
+    // });
+
+    // event.respondWith(respuesta);
+
 });
